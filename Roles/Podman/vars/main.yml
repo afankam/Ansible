@@ -1,0 +1,15 @@
+---
+# vars file for podman
+podman_packages_list_var: containers-tools
+
+systctld_99_disa_stig_var: /etc/sysctl.d/99-disa-stig.conf
+
+podman_user_directory_var:
+  - { path: john, owner: does  }
+  - { path: john, owner: john }
+  - { path: john, owner: john }
+  - { path: john, owner: john }
+  - { path: john, owner: john }
+  - { path: john, owner: john }
+  - { path: john, owner: john }
+  - { path: john, owner: johnn }
