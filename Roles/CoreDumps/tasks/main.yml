@@ -1,0 +1,82 @@
+---
+# tasks file for coredumps
+
+- name: Installs coredumps packages.
+  when:
+    - ansible_facts['distribution'] == "RedHat"
+    - ansible_facts['distribution_major_version'] == "8"
+  ansible.builtin.dnf:
+    name: "{{ abrt_coredumps_packages_rhel8_var }}"
+    state: present
+  tags:
+    - coredumps
+
+
+- name: Checks whether abrt-ccpp-hook is installed.
+  ansible.builtin.shell: /usr/sbin/abrt-install-ccpp-hook | echo $?
+  register: abrt_install_ccpp_hook_content
+  tags:
+    - coredumps
+
+- name: Installs abrt-ccpp-hook.
+  when: abrt_install_ccpp_hook_content.rc != 0
+  ansible.builtin.shell: /usr/sbin/abrt-install-ccpp-hook install
+  tags:
+    - coredumps
+
+- name: Enables abrt-auto-reporting
+  ansible.builtin.shell: /sbin/abrt-auto-reporting enabled
+  tags:
+    - coredumps
+
+- name: Disables abrt-journal-core.service.
+  ansible.builtin.systemd_service:
+    name: abrt-journal-core.service
+    enabled: false
+  tags:
+    - coredumps
+
+- name: Template /etc/abrt/abrt.conf configuration file
+  ansible.builtin.template:
+    src: abrt.conf.j2
+    dest: /etc/abrt/abrt.conf
+    owner: root
+    group: root
+  notify: Restarts {{ item }}
+  loop: "{{ abrt_services_var }}"
+  tags:
+    - coredumps
+
+- name: Check whether abrt dump directory exist.
+  ansible.builtin.stat:
+    path: "{{ abrt_dumplocation_var }}"
+  register: abrt_dumplocation_content
+  tags:
+    - coredumps
+
+- name: Creates abrt dump location /opt/abrt.
+  when: abrt_dumplocation_content.stat.exists != true
+  ansible.builtin.file:
+    path: "{{ abrt_dumplocation_var }}"
+    state: directory
+    owner: root
+    group: abrt
+    mode: '0751'
+  tags:
+    - coredumps
+
+- name: Sets Selinux context for abrt dumplocation.
+  community.general.sefcontext:
+    target: "{{ abrt_dumplocation_var }}(/.*)?"
+    setype: abrt_var_cache_t
+    state: present
+  tags:
+    - coredumps
+
+- name: Enables abrtd and abrt-ccpp services.
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    enabled: true
+  loop: "{{ abrt_services_var }}"
+  tags:
+    - coredumps
