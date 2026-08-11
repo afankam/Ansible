@@ -1,1 +1,13 @@
+---
+# handlers file for coredumps
 
+- name: Restarts abrtd.service
+  ansible.builtin.systemd_service:
+    name: abrtd
+    state: restarted
+
+
+- name: Restarts abrt-ccpp.service
+  ansible.builtin.systemd_service:
+    name: abrt-ccpp
+    state: restarted
