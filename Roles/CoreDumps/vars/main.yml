@@ -1,0 +1,11 @@
+---
+# vars file for coredumps
+abrt_coredumps_packages_rhel8_var:
+  - abrt
+  - abrt-addon-ccpp
+  - abrt-tui
+
+abrt_dumplocation_var: /opt/abrt
+abrt_services_var:
+  - abrtd.service
+  - abrt-ccpp.service
