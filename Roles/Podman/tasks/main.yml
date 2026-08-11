@@ -1,1 +1,89 @@
 
+---
+# tasks file for podman
+- name: Install containers packages.
+  when:
+    - ansible_facts['distribution'] == "RedHat"
+    - ansible_facts['distibution_major_version'] == "8"
+    ansible.builtin.shell: dnf module install -y {{ podman_packages_list_var }}
+  tags:
+    - containers
+
+- name: Checks whether /etc/sysctl.d/99-disa-stig file exist.
+  ansible.builtin.stat:
+    path: "{{ systctld_99_disa_stig_var }}"
+  register: systctld_99_disa_stig_content
+  tags:
+    - containers
+
+- name: Adds or updates user.max_user_namespaces value.
+  ansible_builtin.lineinfile:
+    path: /etc/sysctl.d/99-disa-stig.conf
+    regrexp: ^user.max_user_namespaces
+    line: user.max_user_namespaces = 65536
+    owner: root
+    group: root
+    mode: '0644'
+  tags:
+    - containers
+
+- name: Adds user SUBUID and SUBGID to respective files /etc/subuid & /etc/subgid.
+  block:
+    - name: Copies user subuid file to /etc/subuid.
+      ansible.builtin.copy:
+        src: subuid
+        dest: /etc/subuid
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Copies user subuid file to /etc/subgid.
+      ansible.builtin.copy:
+        src: subgid
+        dest: /etc/subgid
+        owner: root
+        group: root
+        mode: '0644'
+  tags:
+    - containers
+
+- name: Checks whether the directory /sandbox/containers exits.
+  ansible.builtin.stat:
+    path: /sandbox/containers
+  register: sandbox_containers_content
+  tags:
+    - containers
+
+
+- name: Creates directory /sandbox/containers
+  when: sandbox_containers_content.stat.exists != true
+  ansible.builtin.file:
+    path: /sandbox/containers
+    state: directory
+    owner: root
+    group: sweg
+    mode: '3755'
+  tags:
+    - containers
+
+- name: Creates user directories in /sandbox/container/
+  ansible.builtin.file:
+    path: /sandbox/containers/{{ item.path }}
+    state: directory
+    owner: "{{ item.owner }}"
+    group: user
+    mode: '0700'
+  loop: {{ podman_user_directory_var }}
+  tags:
+    - containers
+
+- name: Copies storage.conf file to $USER/.config/containers/
+  ansible.builtin.copy:
+    dest: /home/{{ item.path }}/.config/containers/
+    src: storage.conf
+    owner: "{{ item.owner }}"
+    group: users
+    mode: '0644'
+  loop: '{{ podman_user_directory_var }}'
+  tags:
+    - containers
